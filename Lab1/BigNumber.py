@@ -36,10 +36,51 @@ class BigNumber:
         for i in range(len(self.value)):
             val+=self.value[i]*(self.base**i)
         return val
+    
+
+    def to_2b(self):
+        result = []
+        for val in self.value:
+            result.extend(BigNumber(val, base=2).value)
+        return result
+
+
+    def from_2b(value, base):
+        val = 0
+        for i in range(len(value)):
+            val+=value[i]*(2**i)
+        return BigNumber(val, base)
 
 
     def len(self):
         return len(self.value)
+
+
+    def bit_len(a):
+        return len(a.to_2b())
+
+
+    def isBiggerOrEqThan(self, b):
+        if(self.len()>b.len()):
+            return True
+        elif(self.len()==b.len()):
+            if(self.value[self.len()-1]>=b.value[b.len()-1]):
+                return True
+            else:
+                return False
+        else: return False
+
+    
+    def isSmallerThan(self, b):
+        if(self.len()>b.len()):
+            return False
+        elif(self.len()==b.len()):
+            if(self.value[self.len()-1]<b.value[b.len()-1]):
+                return True
+            else:
+                return False
+        else: return True
+
 
 
 class Operations:
@@ -80,19 +121,22 @@ class Operations:
         borrow = 0
         return_value = BigNumber(base=a.base)
 
-        len_diff = a.len() - b.len()
-        for i in range(b.len()):
-            temp = a.value[i]-b.value[i]-borrow
+        i=0
+        while(i<b.len() or borrow == 1):
+            if i>=b.len():  bval = 0 
+            else:           bval = b.value[i]
+            temp = a.value[i]-bval-borrow
             if(temp>=0):
                 return_value.value.append(temp)
                 borrow=0
             else:
                 return_value.value.append(base + temp)
                 borrow=1
-        if(len_diff>=1):
-            return_value.value.append(a.value[b.len()]-borrow)
-        if(len_diff>1):
-            return_value.value.extend(a.value[b.len()+1:])
+            i+=1
+        # if(len_diff>=1):
+            # return_value.value.append(a.value[b.len()]-borrow)
+        if(a.len()-i>1):
+            return_value.value.extend(a.value[i:])
 
         return_value.length = len(return_value.value)
         return return_value
@@ -112,6 +156,7 @@ class Operations:
     
 
     def sort(a, b):
+        a, b = BigNumber(a.value, a.base),BigNumber(b.value, b.base)
         if(a.len()>b.len()):
             return a, b
         elif(a.len()==b.len()):
@@ -153,6 +198,45 @@ class Operations:
 
         result = Operations.add(Operations.add(A1B1_shifted, middle_term_shifted), A0B0)
         return result
+    
+
+    def squere_pow(a):
+        return Operations.multiply(a, a)
+
+
+    # def div(a, b):
+    #     a, b = Operations.sort(a, b)
+    #     k = b.len()
+    #     R = BigNumber(a.value, a.base)
+    #     Q = BigNumber(0, a.base)
+    #     while R.isBiggerOrEqThan(b):
+    #         t = R.len()
+    #         # C = Operations.shift(b, t-k)
+    #         C = Operations.bit_shift_to_high(b, t-k)
+    #         print(f'C before second shift {C.value}')
+    #         if(R.isSmallerThan(C)):
+    #             print('too high')
+    #             t = t-1
+    #             # C = Operations.shift(b, t-k)
+    #         C = Operations.bit_shift_to_high(b, t-k)
+    #         print(f'C after second shift {C.value}')
+    #         R = Operations.sub(R, C)
+    #         Q = Operations.add(Q, BigNumber(2**(t-k), a.base))
+    #         print(f'current R {R.value}; b {b.value}')
+    #     return Q, R
+    
+
+    # def bit_shift_to_high(big_number, n):
+    #     if(type(big_number) != BigNumber):
+    #         print('Only BigNumber types are allowed for Operations.bit_shift_to_high.')
+    #         return
+    #     bit_number = big_number.to_2b()
+    #     print(f'given binary: {bit_number}')
+    #     shifted = [0 for _ in range(n)]
+    #     shifted.extend(bit_number)
+    #     print(f'resulted binary after {n} shift to high: {shifted}')
+    #     # print(type(bit_number))
+    #     return BigNumber.from_2b(bit_number, big_number.base)
 
 
     def shift(value, i):
@@ -163,3 +247,55 @@ class Operations:
         for j in range(value.len()):
             res.value.append(value.value[j])
         return res
+
+
+    def div(a, b):
+        if not (isinstance(a, BigNumber) and isinstance(b, BigNumber)):
+            print("Only BigNumber types are allowed for division.")
+            return
+
+        if b.to_10b() == 0:
+            print("Cannot divide by zero.")
+            return
+
+        a, b = Operations.sort(a, b)
+        # k = b.len()
+        k = b.bit_len()
+        R = BigNumber(a.value, a.base)  # R is the remainder, initially a
+        Q = BigNumber(0, a.base)        # Q is the quotient, initially 0
+
+        while R.isBiggerOrEqThan(b):
+            # t = R.len()
+            t = R.bit_len()
+            # Shift divisor `b` left by (t - k) positions
+            C = Operations.bit_shift_to_high(b, t - k)
+            # print(f'C before adjustment: {C.value}')
+            
+            # If `R` is smaller than `C`, reduce the shift amount
+            if R.isSmallerThan(C):
+                t -= 1
+                C = Operations.bit_shift_to_high(b, t - k)
+            
+            # print(f'C after adjustment: {C.value}')
+            R = Operations.sub(R, C)
+            Q = Operations.add(Q, BigNumber(2**(t - k), a.base))
+            print(f'Updated R (remainder): {R.value}; Updated Q (quotient): {Q.value}')
+        
+        return Q, R  # Return the quotient and remainder
+
+
+
+    def bit_shift_to_high(big_number, n):
+        if not isinstance(big_number, BigNumber):
+            print('Only BigNumber types are allowed for Operations.bit_shift_to_high.')
+            return
+
+        bit_number = big_number.to_2b()
+        # print(f'Given binary: {bit_number}')
+
+        # Shift the binary number left by `n` positions
+        shifted = [0] * n + bit_number
+        # print(f'Resulted binary after {n} shifts to high: {shifted}')
+        
+        # Convert back to BigNumber
+        return BigNumber.from_2b(shifted, big_number.base)
