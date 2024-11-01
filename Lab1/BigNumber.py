@@ -1,9 +1,9 @@
-import math
+import math, copy
 
 class BigNumber:
     def __init__(self, value=None, base=2**32):
         self.base = base
-                    
+
         val = []
         if(value == None):
             self.value = []
@@ -26,12 +26,13 @@ class BigNumber:
         while value!=0:
             val.append(value%base)
             value //= base
+        # val.extend([0 for i in range(32-len(val))])
 
         self.value = val
         self.length = len(self.value)
 
 
-    def to_10b(self):
+    def to_10bint(self):
         val = 0
         for i in range(len(self.value)):
             val+=self.value[i]*(self.base**i)
@@ -41,21 +42,50 @@ class BigNumber:
     def from_2b(value, base):
         val = 0
         for i in range(len(value)):
-            val+=value[i]*(2**i)
+            val+=int(value[i])*(2**i)
         return BigNumber(val, base)
+    
 
+    def from_16b(value, base):
+        if not isinstance(value, str):
+            return
+        val = 0
+        for i in range(len(value)):
+            if value[i] in {'a', 'b', 'c', 'd', 'e', 'f'}:
+                val+=(10 + ord(value[i]) - ord('a'))*(16**(len(value)-1-i))
+            else:    
+                val+=int(value[i])*(16**(len(value)-1-i))
+        return BigNumber(val, base)
+    
+
+    def to_16b(value):
+        val = BigNumber(value.to_10bint(), 16)
+        s = ''
+        for i in range(len(val.value)):
+            v = val.value[(len(val.value)-1-i)]
+            if(v>=10):
+                s+=chr(v+ord('a')-10)
+            else:
+                s+=str(v)
+        return s
 
     def to_2b(self):
+        if(math.log2(self.base)%2 != 0):
+            print('Not Supported for such value base')
+            return
         result = []
         for i in range(len(self.value)):
             val = self.value[i]
             bin2add = BigNumber(val, base=2).value
             if(len(bin2add) < self.base and i<len(self.value)-1): # fill with zeros between β bits
-                bin2add.extend([0]*(int(math.log2(self.base))-len(bin2add))) 
+                bin2add.extend([0]*abs((int(math.log2(self.base))-len(bin2add))))
             result.extend(bin2add)
         return result
         # return (BigNumber.from_2b(result, base=self.base)).value
 
+    def print_2b(self):
+        val = self.to_2b()
+        return ''.join(map(str, reversed(val)))
 
     def len(self):
         return len(self.value)
@@ -92,7 +122,7 @@ class Operations:
         
         a, b = Operations.sort(a, b)
 
-        b.value.extend([0]*(a.len()-b.len()))
+        b.value.extend([0]*abs((a.len()-b.len())))
 
         base = a.base
         carry = 0
@@ -114,7 +144,7 @@ class Operations:
             return
         
         a, b = Operations.sort(a, b)
-        diff = a.to_10b() - b.to_10b()
+        a, b = Operations.equalize_length(a,b)
         base = a.base
         borrow = 0
         return_value = BigNumber(base=a.base)
@@ -131,8 +161,6 @@ class Operations:
                 return_value.value.append(base + temp)
                 borrow=1
             i+=1
-        # if(len_diff>=1):
-            # return_value.value.append(a.value[b.len()]-borrow)
         if(a.len()-i>=1):
             return_value.value.extend(a.value[i:])
 
@@ -153,13 +181,46 @@ class Operations:
         return ret
     
 
+    def __isBigNumberInput(a,b):
+        if(type(a) != BigNumber or type(b) != BigNumber):
+            return False
+        return True
+
+
+    def equalize_length(a,b):
+        lena, lenb = len(a.value), len(b.value)
+        if lena > lenb:
+            b.value = b.value + [0]*(abs(lena-lenb))
+        elif lena < lenb:
+            a.value = a.value + [0]*(abs(lena-lenb))
+        return a,b
+
+
+    def long_comparison(a, b):
+        ac, bc = copy.deepcopy(a),copy.deepcopy(b)
+        if(not Operations.__isBigNumberInput(ac,bc)):
+            print('Not BigNumbers are given as input')
+            return
+        ac,bc = Operations.equalize_length(ac,bc)
+        i = ac.len() -1
+        while(ac.value[i] == bc.value[i]):
+            i-=1
+        if(i==-1):
+            return 0
+        else:
+            if(ac.value[i]>bc.value[i]):
+                return 1
+            else:
+                return -1
+        
+
     def sort(a, b):
         a, b = BigNumber(a.value, a.base),BigNumber(b.value, b.base)
         if(a.isBiggerOrEqThan(b)):
             return a, b
         else:
             return b, a
-
+    
 
     def multiply_karatzuba(a, b):
         #TODO Won't work until signed numbers are realized
@@ -180,10 +241,10 @@ class Operations:
         B1, B0 = BigNumber(value=b.value[mid:], base=b.base), BigNumber(value=b.value[:mid], base=b.base)
         
         A1B1 = Operations.multiply_karatzuba(A1, B1)
-        print(f"A1 * B1 = {A1B1.to_10b()}, ::: Had to be {A1.to_10b() * B1.to_10b()}")
+        print(f"A1 * B1 = {A1B1.to_10bint()}, ::: Had to be {A1.to_10bint() * B1.to_10bint()}")
 
         A0B0 = Operations.multiply_karatzuba(A0, B0)
-        print(f"A0 * B0 = {A0B0.to_10b()}, ::: Had to be {A0.to_10b() * B0.to_10b()}")
+        print(f"A0 * B0 = {A0B0.to_10b()}, ::: Had to be {A0.to_10bint() * B0.to_10bint()}")
 
         A1pA0mB1pB0 = Operations.multiply_karatzuba(Operations.add(A1, A0), Operations.add(B1, B0))
         middle_term = Operations.sub(
@@ -193,8 +254,8 @@ class Operations:
             ), A0B0
         )
 
-        v1,v0,k1,k0 = A1.to_10b(),A0.to_10b(),B1.to_10b(),B0.to_10b()
-        print(f"Middle term = {middle_term.to_10b()}, ::: Had to be {((v1+v0)*(k1+k0))-(v1*k1)-(v0*k0)}")
+        v1,v0,k1,k0 = A1.to_10bint(),A0.to_10bint(),B1.to_10bint(),B0.to_10bint()
+        print(f"Middle term = {middle_term.to_10bint()}, ::: Had to be {((v1+v0)*(k1+k0))-(v1*k1)-(v0*k0)}")
 
         A1B1_shifted = Operations.shift(A1B1, 2 * mid)
         # print(f"A1B1 shifted = {A1B1_shifted}")
@@ -203,16 +264,9 @@ class Operations:
         # print(f"Middle term shifted = {middle_term_shifted}")
 
         result = Operations.add(Operations.add(A1B1_shifted, middle_term_shifted), A0B0)
-        print(f"Final result = {result.to_10b()}, ::: Had to be {A1B1_shifted.to_10b() + middle_term_shifted.to_10b() + A0B0.to_10b()}")
+        print(f"Final result = {result.to_10bint()}, ::: Had to be {A1B1_shifted.to_10bint() + middle_term_shifted.to_10bint() + A0B0.to_10b()}")
         
         return result
-
-    def equalize_length(a,b):
-        if(not b.isSmallerThan(a)):
-            a, b = Operations.sort()
-        b.value.extend([0]*(a.len()-b.len()))
-        return a,b
-
 
     def multiply(a, b):
         a, b = Operations.sort(a,b)
@@ -243,7 +297,7 @@ class Operations:
             print("Only BigNumber types are allowed for division.")
             return
 
-        if b.to_10b() == 0:
+        if b.to_10bint() == 0:
             print("Cannot divide by zero.")
             return
 
@@ -252,18 +306,16 @@ class Operations:
         R = BigNumber(a.value, a.base)
         Q = BigNumber(0, a.base)
 
-        while R.isBiggerOrEqThan(b):
+        while(Operations.long_comparison(R, b) >= 0):
             t = R.bit_len()
             C = Operations.bit_shift_to_high(b, t - k)
             
-            if R.isSmallerThan(C):
+            if(Operations.long_comparison(R, C) < 0):
                 t -= 1
                 C = Operations.bit_shift_to_high(b, t - k)
-                
-            R = Operations.sub(R, C)
-            Q = Operations.add(Q, BigNumber(2**(t - k), a.base))
 
-            print(f'Updated R (remainder): {R.to_10b()}; Updated Q (quotient): {Q.to_10b()}; b is {b.to_10b()}')
+            R = BigNumber(Operations.sub(R, C).value)
+            Q = BigNumber(Operations.add(Q, BigNumber(2**(t - k), a.base)).value)
 
         return Q, R  # Return the quotient and remainder
 
@@ -275,11 +327,6 @@ class Operations:
             return
 
         bit_number = big_number.to_2b()
-        # print(f'Given binary: {bit_number}')
+        shifted = [0] * abs(n) + bit_number
 
-        # Shift the binary number left by `n` positions
-        shifted = [0] * n + bit_number
-        # print(f'Resulted binary after {n} shifts to high: {shifted}')
-        
-        # Convert back to BigNumber
         return BigNumber.from_2b(shifted, big_number.base)

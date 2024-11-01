@@ -21,9 +21,9 @@ num2 = BigNumber([0,2], 2**32)
 
 quotient, remainder = Operations.div(num1, num2)
 print(f'a: {num1.value}, b: {num2.value}')
-print(f'a: {num1.to_10b()}, b: {num2.to_10b()}')
-print(f'division result:  {quotient.to_10b()}, had to be {num1.to_10b()//num2.to_10b()}')
-print(f'remainder :  {remainder.to_10b()}, had to be {num1.to_10b() - (num1.to_10b()//num2.to_10b())*num2.to_10b()}')
+print(f'a: {num1.to_10bint()}, b: {num2.to_10bint()}')
+print(f'division result:  {quotient.to_10bint()}, had to be {num1.to_10bint()//num2.to_10bint()}')
+print(f'remainder :  {remainder.to_10bint()}, had to be {num1.to_10bint() - (num1.to_10bint()//num2.to_10bint())*num2.to_10bint()}')
 
 
 ###
