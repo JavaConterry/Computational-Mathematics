@@ -94,7 +94,6 @@ class BigNumber:
     def bit_len(a):
         return len(a.to_2b())
 
-
     def isBiggerOrEqThan(self, b):
         if(self.len()>b.len()):
             return True
@@ -111,6 +110,18 @@ class BigNumber:
     
     def isSmallerThan(self, b):
         return not self.isBiggerOrEqThan(b)
+    
+    def isEven(self):
+        b2 = self.to_2b()
+        if b2 ==0:
+            return True
+        return False
+    
+    def isZero(self):
+        for i in self.value:
+            if i!=0:
+                return False
+        return True
 
 
 
@@ -201,9 +212,10 @@ class Operations:
         if(not Operations.__isBigNumberInput(ac,bc)):
             print('Not BigNumbers are given as input')
             return
+        
         ac,bc = Operations.equalize_length(ac,bc)
         i = ac.len() -1
-        while(ac.value[i] == bc.value[i]):
+        while(i>=0 and ac.value[i] == bc.value[i]):
             i-=1
         if(i==-1):
             return 0
@@ -241,10 +253,10 @@ class Operations:
         B1, B0 = BigNumber(value=b.value[mid:], base=b.base), BigNumber(value=b.value[:mid], base=b.base)
         
         A1B1 = Operations.multiply_karatzuba(A1, B1)
-        print(f"A1 * B1 = {A1B1.to_10bint()}, ::: Had to be {A1.to_10bint() * B1.to_10bint()}")
+        # print(f"A1 * B1 = {A1B1.to_10bint()}, ::: Had to be {A1.to_10bint() * B1.to_10bint()}")
 
         A0B0 = Operations.multiply_karatzuba(A0, B0)
-        print(f"A0 * B0 = {A0B0.to_10b()}, ::: Had to be {A0.to_10bint() * B0.to_10bint()}")
+        # print(f"A0 * B0 = {A0B0.to_10b()}, ::: Had to be {A0.to_10bint() * B0.to_10bint()}")
 
         A1pA0mB1pB0 = Operations.multiply_karatzuba(Operations.add(A1, A0), Operations.add(B1, B0))
         middle_term = Operations.sub(
@@ -255,7 +267,7 @@ class Operations:
         )
 
         v1,v0,k1,k0 = A1.to_10bint(),A0.to_10bint(),B1.to_10bint(),B0.to_10bint()
-        print(f"Middle term = {middle_term.to_10bint()}, ::: Had to be {((v1+v0)*(k1+k0))-(v1*k1)-(v0*k0)}")
+        # print(f"Middle term = {middle_term.to_10bint()}, ::: Had to be {((v1+v0)*(k1+k0))-(v1*k1)-(v0*k0)}")
 
         A1B1_shifted = Operations.shift(A1B1, 2 * mid)
         # print(f"A1B1 shifted = {A1B1_shifted}")
@@ -264,7 +276,7 @@ class Operations:
         # print(f"Middle term shifted = {middle_term_shifted}")
 
         result = Operations.add(Operations.add(A1B1_shifted, middle_term_shifted), A0B0)
-        print(f"Final result = {result.to_10bint()}, ::: Had to be {A1B1_shifted.to_10bint() + middle_term_shifted.to_10bint() + A0B0.to_10b()}")
+        # print(f"Final result = {result.to_10bint()}, ::: Had to be {A1B1_shifted.to_10bint() + middle_term_shifted.to_10bint() + A0B0.to_10b()}")
         
         return result
 
@@ -301,7 +313,7 @@ class Operations:
             print("Cannot divide by zero.")
             return
 
-        a, b = Operations.sort(a, b)
+        # a, b = Operations.sort(a, b)
         k = b.bit_len()
         R = BigNumber(a.value, a.base)
         Q = BigNumber(0, a.base)
@@ -314,8 +326,8 @@ class Operations:
                 t -= 1
                 C = Operations.bit_shift_to_high(b, t - k)
 
-            R = BigNumber(Operations.sub(R, C).value)
-            Q = BigNumber(Operations.add(Q, BigNumber(2**(t - k), a.base)).value)
+            R = BigNumber(Operations.sub(R, C).value, a.base)
+            Q = BigNumber(Operations.add(Q, BigNumber(2**(t - k), a.base)).value,a.base)
 
         return Q, R  # Return the quotient and remainder
 
@@ -330,3 +342,64 @@ class Operations:
         shifted = [0] * abs(n) + bit_number
 
         return BigNumber.from_2b(shifted, big_number.base)
+    
+
+    def min(a,b):
+        if Operations.long_comparison(a,b)<1:
+            return a
+        return b
+
+
+    #gcd - НСД
+    # Using Stein algorithm
+    def gcd(a,b):
+        if not (isinstance(a, BigNumber) and isinstance(b, BigNumber)):
+            print('Only BigNumber types are allowed.')
+            return
+        
+        two = BigNumber(2, a.base)
+        d = BigNumber(1, a.base)
+        while(a.isEven() and b.isEven()):
+            a = Operations.div(a,two)[0]
+            b = Operations.div(b,two)[0]
+            d = Operations.multiply(d, two)
+        while(a.isEven()):
+            a = Operations.div(a,two)[0]
+        while(not b.isZero()):
+            while(b.isEven()):
+                b = Operations.div(b,two)[0]
+            a,b = Operations.min(a,b), Operations.sub(a,b)
+        d = Operations.multiply(d,a)
+        return d
+    
+
+    def BarrettReduction(x :BigNumber,n :BigNumber):
+        if(x.len() != n.len()*2):
+            print('Barrett reduction requires to have 2k=|x|=2|n|')
+        k = x.len()//2
+        mue = Operations.div(BigNumber(x.base**(2*k)),n)[0]
+        q = BigNumber(x.value[:k+1], x.base)
+        q = Operations.multiply(q, mue)
+        print('qmue:', q.to_10bint())
+        q.value = q.value[:q.len()-(k+1)]
+        print('qcut:', q.to_10bint())
+        print('x', x.to_10bint())
+        print('q*n', Operations.multiply(q,n).to_10bint())
+        r = Operations.sub(x, Operations.multiply(q,n))
+        print(r.value)
+        while(Operations.long_comparison(r,n)>=0):
+            r = Operations.sub(r,n)
+        return r
+    
+
+    def module_sum(a,b,n):
+        a = Operations.BarrettReduction(a,n)
+        b = Operations.BarrettReduction(b,n)
+        return Operations.add(a,b)
+    
+    def module_sub(a,b,n):
+        a = Operations.BarrettReduction(a,n)
+        b = Operations.BarrettReduction(b,n)
+        return Operations.sub(a,b)
+    
+    
