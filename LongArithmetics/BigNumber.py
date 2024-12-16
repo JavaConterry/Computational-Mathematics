@@ -344,6 +344,23 @@ class Operations:
         return BigNumber.from_2b(shifted, big_number.base)
     
 
+    def power(a, b):
+        C = BigNumber(1, a.base)
+        D = []
+        D.append(BigNumber(1, a.base))
+        D.append(a)
+
+        for i in range(2, b.base-1):
+            D.append(Operations.multiply(D[len(D)-1], a))
+        for i in range(b.len()-1, 0):
+            C = Operations.multiply(C, D[b.value[i]])
+            if i!=0:
+                for k in range(1, math.log2(a.base)):
+                    C = Operations.multiply(C, C)
+        return C
+
+
+
     def min(a,b):
         if Operations.long_comparison(a,b)<1:
             return a
