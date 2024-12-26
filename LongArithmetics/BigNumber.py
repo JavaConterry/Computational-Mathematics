@@ -293,7 +293,6 @@ class Operations:
     def squere_pow(a):
         return Operations.multiply(a, a)
 
-
     def shift(value, i):
         value = BigNumber(value.value, value.base)
         res = BigNumber(base = value.base)
@@ -302,7 +301,6 @@ class Operations:
         for j in range(value.len()):
             res.value.append(value.value[j])
         return res
-
 
     def div(a, b):
         if not (isinstance(a, BigNumber) and isinstance(b, BigNumber)):
@@ -343,6 +341,9 @@ class Operations:
 
         return BigNumber.from_2b(shifted, big_number.base)
     
+
+    def bit_shift_div(big_number, n):
+        return BigNumber(big_number.value[:big_number.len()-n], big_number.base)
 
     def power(a, b):
         C = BigNumber(1, a.base)
@@ -389,34 +390,55 @@ class Operations:
         d = Operations.multiply(d,a)
         return d
     
+    def BarrettReduction(x: BigNumber, n: BigNumber, mue=None):
+        if x.len() != n.len() * 2:
+            print('Barrett reduction requires |x| = 2|n|.')
+            return None
+        
+        if(mue is None):
+            mue = Operations.div(BigNumber(x.base ** (x.len())), n)[0]  # Precomputed μ
 
-    def BarrettReduction(x :BigNumber,n :BigNumber):
-        if(x.len() != n.len()*2):
-            print('Barrett reduction requires to have 2k=|x|=2|n|')
-        k = x.len()//2
-        mue = Operations.div(BigNumber(x.base**(2*k)),n)[0]
-        q = BigNumber(x.value[:k+1], x.base)
+        k = n.len()
+        print(f'x before shift k-1 {x.value}')
+        q = Operations.bit_shift_div(x, k-1)
+        print(f'q after shift k-1 {q.value}')
         q = Operations.multiply(q, mue)
-        print('qmue:', q.to_10bint())
-        q.value = q.value[:q.len()-(k+1)]
-        print('qcut:', q.to_10bint())
-        print('x', x.to_10bint())
-        print('q*n', Operations.multiply(q,n).to_10bint())
-        r = Operations.sub(x, Operations.multiply(q,n))
-        print(r.value)
-        while(Operations.long_comparison(r,n)>=0):
-            r = Operations.sub(r,n)
+        print(f'q after multiplication by mue {q.value}')
+        q = Operations.bit_shift_div(q, k+1)
+        print(f'q after shift k+1 {q.value}')
+        print('X:  ', x.value)
+        print('Q*n:', Operations.multiply(q, n).value)
+        r = Operations.sub(x, Operations.multiply(q, n))
+        print(f"Initial r: {r.to_10bint()}")
+
+        while Operations.long_comparison(r, n) >= 0:
+            # print(f"Reducing r: {r.to_10bint()} >= {n.to_10bint()}")
+            r = Operations.sub(r, n)
+            # print(f"Updated r: {r.to_10bint()}")
+
+        print(f"Final r: {r.to_10bint()}")
         return r
-    
 
     def module_sum(a,b,n):
-        a = Operations.BarrettReduction(a,n)
-        b = Operations.BarrettReduction(b,n)
-        return Operations.add(a,b)
-    
+        return Operations.BarrettReduction(Operations.add(a,b), n)
+
     def module_sub(a,b,n):
-        a = Operations.BarrettReduction(a,n)
-        b = Operations.BarrettReduction(b,n)
-        return Operations.sub(a,b)
+        return Operations.BarrettReduction(Operations.sub(a,b), n)
+    
+    def module_mul(a,b,n):
+        return Operations.BarrettReduction(Operations.mul(a,b), n)
+    
+    def module_power(a,b,n):
+        k = n.len()
+        c = BigNumber(1, a.base)
+        mue = Operations.div(Operations.bit_shift_to_high(BigNumber(1, a.base), k*2) ,n)
+        for i in range(0, b.len()-1):
+            if b.value[i]==1:
+                c = Operations.BarrettReduction(Operations.multiply(c, a), n, mue)
+            a = Operations.BarrettReduction(Operations.multiply(a,a), n, mue)
+        return c
+    
+    def module_power_two(a,n):
+        return Operations.module_mul(a,a,n)
     
     
