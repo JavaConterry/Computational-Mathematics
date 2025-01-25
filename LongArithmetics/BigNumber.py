@@ -113,7 +113,7 @@ class BigNumber:
     
     def isEven(self):
         b2 = self.to_2b()
-        if b2 ==0:
+        if b2[0] ==0:
             return True
         return False
     
@@ -365,6 +365,10 @@ class Operations:
     def min(a,b):
         if Operations.long_comparison(a,b)<1:
             return a
+        return b    
+    def max(a,b):
+        if Operations.long_comparison(a,b)>=1:
+            return a
         return b
 
 
@@ -386,7 +390,8 @@ class Operations:
         while(not b.isZero()):
             while(b.isEven()):
                 b = Operations.div(b,two)[0]
-            a,b = Operations.min(a,b), Operations.sub(a,b)
+            a,b = Operations.min(a,b), Operations.sub(Operations.max(a,b), Operations.min(a,b))
+            # print(f'a: {a.to_10bint()}, b:{b.to_10bint()}')
         d = Operations.multiply(d,a)
         return d
     
@@ -395,29 +400,37 @@ class Operations:
             print('Barrett reduction requires |x| = 2|n|.')
             return None
         
-        if(mue is None):
-            mue = Operations.div(BigNumber(x.base ** (x.len())), n)[0]  # Precomputed μ
-
         k = n.len()
-        print(f'x before shift k-1 {x.value}')
-        q = Operations.bit_shift_div(x, k-1)
-        print(f'q after shift k-1 {q.value}')
-        q = Operations.multiply(q, mue)
-        print(f'q after multiplication by mue {q.value}')
-        q = Operations.bit_shift_div(q, k+1)
-        print(f'q after shift k+1 {q.value}')
-        print('X:  ', x.value)
-        print('Q*n:', Operations.multiply(q, n).value)
-        r = Operations.sub(x, Operations.multiply(q, n))
-        print(f"Initial r: {r.to_10bint()}")
 
-        while Operations.long_comparison(r, n) >= 0:
-            # print(f"Reducing r: {r.to_10bint()} >= {n.to_10bint()}")
-            r = Operations.sub(r, n)
-            # print(f"Updated r: {r.to_10bint()}")
+        if(mue is None):
+            mue = Operations.div(BigNumber(x.base ** (2*k), x.base), n)[0]  # Precomputed μ
+            print(BigNumber(x.base ** (2*k), x.base).to_10bint() / n.to_10bint())
+            print(mue.to_10bint())
 
-        print(f"Final r: {r.to_10bint()}")
+        # print(f'orig mue: {mue.to_10bint()}')
+        
+        if (k>1):
+            # print(f'x before shift k-1 {x.value}')
+            q = Operations.bit_shift_div(x, k-1)    
+            # print(f'q after shift k-1 {q.value}')
+            q = Operations.multiply(q, mue)
+            # print(f'q after multiplication by mue {q.value}')
+            q = Operations.bit_shift_div(q, k+1)
+            # print(f'q after shift k+1 {q.value}')
+            print('X:  ', x.to_10bint())
+            print('Q*n:', Operations.multiply(q, n).to_10bint())
+            r = Operations.sub(x, Operations.multiply(q, n))
+            print(f"Initial r: {r.to_10bint()}")
+            while Operations.long_comparison(r, n) >= 0:
+                # print(f"Reducing r: {r.to_10bint()} >= {n.to_10bint()}")
+                r = Operations.sub(r, n)
+                # print(f"Updated r: {r.to_10bint()}")
+        else:
+            return Operations.div(x, n)[1]
+        
+        # print(f"Final r: {r.to_10bint()}")
         return r
+
 
     def module_sum(a,b,n):
         return Operations.BarrettReduction(Operations.add(a,b), n)
